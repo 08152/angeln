@@ -140,7 +140,7 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
 
     // Rahmen
     box(shop, 0.13, 2.98, 0.15, woodEdge, -1.58, 0, 0.14);
-    box(shop, 0.13, 2.98, 0.15, woodEdge,  1.58, 0, 0.14);
+    box(shop, 0.13, 2.98, 0.15, woodEdge, 1.58, 0, 0.14);
 
     box(shop, 3.25, 0.13, 0.15, woodEdge, 0, 1.44, 0.14);
     box(shop, 3.25, 0.13, 0.15, woodEdge, 0, -1.44, 0.14);
@@ -163,7 +163,7 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
     );
 
     // ============================================
-    // PRODUKTPLÄTZE
+    // PRODUKTE UND PREISE
     // ============================================
 
     const products = [
@@ -171,13 +171,18 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
             id: "krabenangel",
             name: "KRABBENANGEL",
             file: "./krabenangel.js",
+            price: 3,
+            currency: "Coins",
             x: -1.18,
-            size: 0.95
+            size: 0.95,
+            bait: "standard"
         },
         {
             id: "schlagring",
             name: "SCHLAGRING",
             file: "./schlagring.js",
+            price: 20,
+            currency: "Coins",
             x: -0.59,
             size: 0.65
         },
@@ -185,6 +190,8 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
             id: "cola",
             name: "COLA",
             file: "./cola.js",
+            price: 15,
+            currency: "Coins",
             x: 0,
             size: 0.65
         },
@@ -192,6 +199,8 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
             id: "messer",
             name: "MESSER",
             file: "./messer.js",
+            price: 45,
+            currency: "Coins",
             x: 0.59,
             size: 0.65
         },
@@ -199,6 +208,9 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
             id: "hotdog",
             name: "HOTDOG",
             file: "./hotdog.js",
+            price: 2,
+            currency: "Coins",
+            durability: 2,
             x: 1.18,
             size: 0.65
         }
@@ -206,7 +218,10 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
 
     const models = {};
 
-    // Fünf kleine Produktfächer
+    // ============================================
+    // PRODUKTFÄCHER
+    // ============================================
+
     for (const item of products) {
         // Hintergrund
         box(
@@ -266,6 +281,25 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
             0.255
         );
 
+        // Preisschild
+        box(
+            shop,
+            0.55, 0.23, 0.065,
+            woodDark,
+            item.x, -1.27, 0.21
+        );
+
+        textPlate(
+            shop,
+            item.price + " COINS",
+            "",
+            0.51,
+            0.18,
+            item.x,
+            -1.27,
+            0.25
+        );
+
         // Nägel
         for (const side of [-1, 1]) {
             const nail = new THREE.Mesh(
@@ -299,15 +333,19 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
                 module.createItem ||
                 module.loadModel;
 
-            let model;
+            let result;
 
             if (typeof factory === "function") {
-                model = await factory(THREE);
+                result = await factory(THREE);
             } else if (module.model?.isObject3D) {
-                model = module.model.clone(true);
+                result = module.model.clone(true);
             }
 
-            // GLTFLoader-Rückgabe unterstützen
+            // Unterstützt THREE.Group oder { group: THREE.Group }
+            let model = result?.group?.isObject3D
+                ? result.group
+                : result;
+
             if (model?.scene?.isObject3D) {
                 model = model.scene;
             }
@@ -345,6 +383,11 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
             shop.add(model);
             models[item.id] = model;
 
+            // Zusätzliche Modellfunktionen erhalten
+            if (result?.group === model) {
+                model.userData.modelControls = result;
+            }
+
             console.log("Shop-Item geladen:", item.id);
 
         } catch (error) {
@@ -370,10 +413,38 @@ export async function createInsel1Shop(THREE, scene, options = {}) {
     light.position.set(0, 0.8, 1.7);
     shop.add(light);
 
+    // ============================================
+    // KAUF- UND KÖDERDATEN
+    // ============================================
+
+    const prices = {
+        krabenangel: 3,
+        schlagring: 20,
+        cola: 15,
+        messer: 45,
+        hotdog: 2
+    };
+
+    const bait = {
+        standard: {
+            price: 0,
+            infinite: true,
+            durability: Infinity
+        },
+
+        hotdog: {
+            price: 2,
+            infinite: false,
+            durability: 2
+        }
+    };
+
     return {
         group: shop,
         models,
-        products
+        products,
+        prices,
+        bait
     };
 }
 
